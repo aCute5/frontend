@@ -84,17 +84,74 @@ app.post("/api/recipes", (req, res) => {
   );
 });
 
-// Ottieni tutte le ricette
+// Ottieni le ricette dell'utente loggato
 app.get("/api/recipes", (req, res) => {
-  db.all(
-    "SELECT recipes.*, users.email FROM recipes JOIN users ON recipes.user_id = users.id",
-    (err, recipes) => {
+  const userId = req.query.userId;
+
+  if (userId) {
+    // Se c'è un userId, restituisci solo le ricette di quell'utente
+    db.all(
+      "SELECT recipes.*, users.email FROM recipes JOIN users ON recipes.user_id = users.id WHERE recipes.user_id = ?",
+      [userId],
+      (err, recipes) => {
+        if (err) {
+          return res
+            .status(400)
+            .json({ error: "Errore nel recuperare le ricette" });
+        }
+        res.json(recipes);
+      }
+    );
+  } else {
+    // Se non c'è userId, restituisci tutte le ricette (per la pagina pubblica)
+    db.all(
+      "SELECT recipes.*, users.email FROM recipes JOIN users ON recipes.user_id = users.id",
+      (err, recipes) => {
+        if (err) {
+          return res
+            .status(400)
+            .json({ error: "Errore nel recuperare le ricette" });
+        }
+        res.json(recipes);
+      }
+    );
+  }
+});
+
+// Elimina ricetta
+app.delete("/api/recipes/:id", (req, res) => {
+  const { id } = req.params;
+  const userId = req.query.userId;
+
+  // Prima verifica se la ricetta esiste e appartiene all'utente
+  db.get(
+    "SELECT * FROM recipes WHERE id = ? AND user_id = ?",
+    [id, userId],
+    (err, recipe) => {
       if (err) {
         return res
           .status(400)
-          .json({ error: "Errore nel recuperare le ricette" });
+          .json({ error: "Errore nella verifica della ricetta" });
       }
-      res.json(recipes);
+      if (!recipe) {
+        return res
+          .status(404)
+          .json({ error: "Ricetta non trovata o non autorizzato" });
+      }
+
+      // Se la ricetta esiste e appartiene all'utente, eliminala
+      db.run(
+        "DELETE FROM recipes WHERE id = ? AND user_id = ?",
+        [id, userId],
+        function (err) {
+          if (err) {
+            return res
+              .status(400)
+              .json({ error: "Errore nella cancellazione della ricetta" });
+          }
+          res.json({ message: "Ricetta eliminata con successo" });
+        }
+      );
     }
   );
 });

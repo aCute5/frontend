@@ -16,7 +16,10 @@ export default function RecipesPage() {
 
   const fetchRecipes = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/recipes");
+      const userId = localStorage.getItem("userId");
+      const response = await fetch(
+        `http://localhost:5000/api/recipes?userId=${userId}`
+      );
       const data = await response.json();
       setRecipes(data);
     } catch (error) {
@@ -49,6 +52,26 @@ export default function RecipesPage() {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
     navigate("/login");
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const userId = localStorage.getItem("userId");
+      const response = await fetch(
+        `http://localhost:5000/api/recipes/${id}?userId=${userId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete recipe");
+      }
+
+      await fetchRecipes(); // Ricarica le ricette dopo l'eliminazione
+    } catch (error) {
+      console.error("Error deleting recipe:", error);
+    }
   };
 
   return (
@@ -151,6 +174,12 @@ export default function RecipesPage() {
                     4.0
                   </span>
                 </div>
+                <button
+                  onClick={() => handleDelete(recipe.id)}
+                  className="px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  Elimina
+                </button>
               </div>
             </div>
           ))}
